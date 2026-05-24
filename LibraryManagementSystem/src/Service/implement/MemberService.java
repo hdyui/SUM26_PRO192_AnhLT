@@ -1,6 +1,6 @@
-package Service.implement;
+package service.implement;
 
-import Service.interfaces.IMemberManagement;
+import service.interfaces.IMemberManagement;
 
 public class MemberService implements IMemberManagement {
 }

@@ -1,4 +1,4 @@
-package Service.interfaces;
+package service.interfaces;
 
 public interface IBorrowingManagement {
 }

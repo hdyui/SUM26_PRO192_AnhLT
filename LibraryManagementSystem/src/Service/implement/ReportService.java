@@ -1,6 +1,6 @@
-package Service.implement;
+package service.implement;
 
-import Service.interfaces.IReportManagement;
+import service.interfaces.IReportManagement;
 
 public class ReportService implements IReportManagement {
 }

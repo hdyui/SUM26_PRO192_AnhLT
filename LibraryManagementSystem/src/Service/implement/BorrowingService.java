@@ -1,6 +1,6 @@
-package Service.implement;
+package service.implement;
 
-import Service.interfaces.IBorrowingManagement;
+import service.interfaces.IBorrowingManagement;
 
 public class BorrowingService implements IBorrowingManagement {
 }
