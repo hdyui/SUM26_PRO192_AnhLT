@@ -1,3 +1,8 @@
 /LibraryManagementSystem_Group3/nbproject/private/
 /LibraryManagementSystem_Group3/build/
 /CHANGEV3/nbproject/private/
+/LibraryManagementSystem/nbproject/private/
+build/
+dist/
+*.class
+nbproject/private/
