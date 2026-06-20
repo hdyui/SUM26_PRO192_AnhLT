@@ -3,21 +3,24 @@ package model;
 public class PremiumMember extends Member {
 
     private static final int    BORROW_LIMIT  = 5;
-    private static final double FINE_PER_DAY  = 3000.0; 
-
-
+    private static final double FINE_PER_DAY  = 3000.0;
+    
     public PremiumMember(String memberId, String name, String phone, String email) {
-        super(memberId, name, phone, email);
+        super(memberId, name, phone, email, "Premium");
     }
 
-    @Override
-    public int getBorrowingLimit() {
+    public static int getBORROW_LIMIT() {
         return BORROW_LIMIT;
     }
 
+    public static double getFINE_PER_DAY() {
+        return FINE_PER_DAY;
+    }
+
+    
     @Override
-    public String getMemberType() {
-        return "Premium";
+    public int getBorrowingLimit() {
+        return BORROW_LIMIT;
     }
 
     @Override

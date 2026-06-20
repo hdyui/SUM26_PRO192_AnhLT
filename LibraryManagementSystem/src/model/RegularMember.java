@@ -6,17 +6,12 @@ public class RegularMember extends Member {
     private static final double FINE_PER_DAY  = 5000.0; 
 
     public RegularMember(String memberId, String name, String phone, String email) {
-        super(memberId, name, phone, email);
+        super(memberId, name, phone, email, "Regular");
     }
 
     @Override
     public int getBorrowingLimit() {
         return BORROW_LIMIT;
-    }
-
-    @Override
-    public String getMemberType() {
-        return "Regular";
     }
 
     @Override
