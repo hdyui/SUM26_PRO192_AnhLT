@@ -3,10 +3,15 @@
     <editor-bookmarks xmlns="http://www.netbeans.org/ns/editor-bookmarks/2" lastBookmarkId="0"/>
     <open-files xmlns="http://www.netbeans.org/ns/projectui-open-files/2">
         <group>
-            <file>file:/E:/SUM26_PRO192_AnhLT/LibraryManagementSystem/src/model/Member.java</file>
-            <file>file:/E:/SUM26_PRO192_AnhLT/LibraryManagementSystem/src/model/RegularMember.java</file>
-            <file>file:/E:/SUM26_PRO192_AnhLT/LibraryManagementSystem/src/model/PremiumMember.java</file>
-            <file>file:/E:/SUM26_PRO192_AnhLT/LibraryManagementSystem/src/Main.java</file>
+            <file>file:/D:/FPT_University/KI_2_SUMMMER_2026/PRO/PROJECT/SUM26_PRO192_AnhLT/LibraryManagementSystem/src/model/PremiumMember.java</file>
+            <file>file:/D:/FPT_University/KI_2_SUMMMER_2026/PRO/PROJECT/SUM26_PRO192_AnhLT/LibraryManagementSystem/src/model/RegularMember.java</file>
+            <file>file:/D:/FPT_University/KI_2_SUMMMER_2026/PRO/PROJECT/SUM26_PRO192_AnhLT/LibraryManagementSystem/src/service/interfaces/IReportManagement.java</file>
+            <file>file:/D:/FPT_University/KI_2_SUMMMER_2026/PRO/PROJECT/SUM26_PRO192_AnhLT/LibraryManagementSystem/src/utils/FileUtils.java</file>
+            <file>file:/D:/FPT_University/KI_2_SUMMMER_2026/PRO/PROJECT/SUM26_PRO192_AnhLT/LibraryManagementSystem/src/service/interfaces/IMemberManagement.java</file>
+            <file>file:/D:/FPT_University/KI_2_SUMMMER_2026/PRO/PROJECT/SUM26_PRO192_AnhLT/LibraryManagementSystem/src/service/implement/BookService.java</file>
+            <file>file:/D:/FPT_University/KI_2_SUMMMER_2026/PRO/PROJECT/SUM26_PRO192_AnhLT/LibraryManagementSystem/src/utils/Input.java</file>
+            <file>file:/D:/FPT_University/KI_2_SUMMMER_2026/PRO/PROJECT/SUM26_PRO192_AnhLT/LibraryManagementSystem/src/resources/members.txt</file>
+            <file>file:/D:/FPT_University/KI_2_SUMMMER_2026/PRO/PROJECT/SUM26_PRO192_AnhLT/LibraryManagementSystem/src/service/implement/MemberService.java</file>
         </group>
     </open-files>
 </project-private>
