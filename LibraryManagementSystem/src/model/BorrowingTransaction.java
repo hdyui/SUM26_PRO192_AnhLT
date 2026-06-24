@@ -33,6 +33,19 @@ public class BorrowingTransaction {
         this.fineAmount = 0.0;
         this.status = STATUS_BORROWING;
     }
+
+    public BorrowingTransaction(String transactionId, String bookId, String memberId,
+                                LocalDate borrowDate, LocalDate dueDate, LocalDate returnDate,
+                                double fineAmount, String status) {
+        this.transactionId = transactionId;
+        this.bookId = bookId;
+        this.memberId = memberId;
+        this.borrowDate = borrowDate;
+        this.dueDate = dueDate != null ? dueDate : borrowDate.plusDays(14);
+        this.returnDate = returnDate;
+        this.fineAmount = fineAmount;
+        this.status = status != null && !status.trim().isEmpty() ? status : STATUS_BORROWING;
+    }
     
     //All Getter
     public String getTransactionId()    {return transactionId;}

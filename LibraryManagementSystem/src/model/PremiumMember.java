@@ -8,15 +8,6 @@ public class PremiumMember extends Member {
     public PremiumMember(String memberId, String name, String phone, String email) {
         super(memberId, name, phone, email, "Premium");
     }
-
-    public static int getBORROW_LIMIT() {
-        return BORROW_LIMIT;
-    }
-
-    public static double getFINE_PER_DAY() {
-        return FINE_PER_DAY;
-    }
-
     
     @Override
     public int getBorrowingLimit() {
