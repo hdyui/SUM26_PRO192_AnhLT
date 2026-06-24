@@ -11,7 +11,7 @@ public class Book {
     private int timesBorrowed;
 
 
-    public Book(String bookId, String tirle, String author, String genre, int publicationYear, int quantity, String status, int timesBorrowed) {
+    public Book(String bookId, String title, String author, String genre, int publicationYear, int quantity, String status, int timesBorrowed) {
         this.bookId = bookId;
         this.title = title;
         this.author = author;
@@ -34,7 +34,7 @@ public class Book {
     }
 
     public String getTitle() {
-        return tirle;
+        return title;
     }
 
     public String getAuthor() {

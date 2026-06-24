@@ -196,9 +196,9 @@ public class FileUtils {
         String bookId = parts[1].trim();
         String memberId = parts[2].trim();
         LocalDate borrowDate = parseDate(parts[3].trim());
-        LocalDate dueDate = parts.length > 4 ? parseDate(parts[4].trim()) : null;
-        LocalDate returnDate = parts.length > 5 ? parseDate(parts[5].trim()) : null;
-        return new BorrowingTransaction(transactionId, bookId, memberId, borrowDate, dueDate, returnDate);
+//        LocalDate dueDate = parts.length > 4 ? parseDate(parts[4].trim()) : null;
+//        LocalDate returnDate = parts.length > 5 ? parseDate(parts[5].trim()) : null;
+        return new BorrowingTransaction(transactionId, bookId, memberId, borrowDate);
     }
 
     private static int parseInt(String value) {
