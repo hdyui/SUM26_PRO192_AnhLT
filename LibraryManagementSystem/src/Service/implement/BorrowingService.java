@@ -9,8 +9,10 @@ import service.interfaces.IMemberManagement;
 import utils.FileUtils;
 
 import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
+import java.io.IOException;
 
 
 public class BorrowingService implements IBorrowingManagement {
@@ -31,7 +33,12 @@ public class BorrowingService implements IBorrowingManagement {
         this.memberService = memberService;
         
         // Đọc dữ liệu từ file khi khởi động chương trình
-        this.transactionList = FileUtils.loadTransactionsFromFile(FILE_PATH); 
+        try {
+            this.transactionList = FileUtils.loadTransactionsFromFile(FILE_PATH);
+        } catch (IOException ex) {
+            System.out.println("Failed to load transactions: " + ex.getMessage());
+            this.transactionList = new ArrayList<>();
+        }
         if (this.transactionList == null) {
             this.transactionList = new ArrayList<>();
         }
