@@ -1,6 +1,7 @@
 package model;
 
 import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 
 public class BorrowingTransaction {
     
@@ -46,7 +47,7 @@ public class BorrowingTransaction {
     
 
     //Methods Basic in Model
-    //Method dung de check xem da qua han chua
+    //Method dung de check xem da qua han chua (tra ve true - false)
     public boolean isOverdue(LocalDate checkDate) { //checkDate thong so truyen vao se la ngay check (hom nay)
         if(status.equals(STATUS_RETURNED)) {
             //Neu da tra thi logic check xem returnDate (ngayTra) co qua han voi dueDate (hanTra) hay khong
@@ -57,6 +58,15 @@ public class BorrowingTransaction {
         }
     }
     
+    //Tinh so ngay qua han -> Dung cho tinh tien phat
+    public int calOverdue(LocalDate checkDate) {
+        if(!isOverdue(checkDate)) {
+            return 0;
+        } else {
+            LocalDate end = status.equals(STATUS_RETURNED) ? returnDate : checkDate;
+            return (int) ChronoUnit.DAYS.between(dueDate, end);
+        }
+    }
     
     //Method nay dung de danh dau sach da duoc tra va can thay doi mot so trang thai
     public void markReturned(LocalDate returnDate, double fineAmount) {
