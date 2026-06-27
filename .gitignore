@@ -6,3 +6,6 @@ build/
 dist/
 *.class
 nbproject/private/
+LibraryManagementSystem/build/classes/model/BorrowingTransaction.class
+LibraryManagementSystem/nbproject/private/private.xml
+LibraryManagementSystem/build/classes/Service/implement/BorrowingService.class
