@@ -1,12 +1,14 @@
 package model;
 
 import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 
 public class BorrowingTransaction {
     
     public static final String STATUS_BORROWING = "BORROWING";
-    public static final String STATUS_RETURNED = "RETURNED";
+    public static final String STATUS_RETURNED = "RETURNED";\
+    public static final DateTimeFormatter FMT = DateTimeFormatter.ofPattern("dd/MM/yyyy");
     
     private String transactionId;
     private String bookId;
@@ -25,7 +27,7 @@ public class BorrowingTransaction {
         this.memberId = memberId;
         this.borrowDate = borrowDate;
         
-        //Khong input vao ma sai logic: han tra là 14 ngay sau ngay muon
+        //Khong input vao ma dung logic: han tra là 14 ngay sau ngay muon
         this.dueDate = borrowDate.plusDays(14);
         
         
@@ -35,18 +37,6 @@ public class BorrowingTransaction {
         this.status = STATUS_BORROWING;
     }
 
-    public BorrowingTransaction(String transactionId, String bookId, String memberId,
-                                LocalDate borrowDate, LocalDate dueDate, LocalDate returnDate,
-                                double fineAmount, String status) {
-        this.transactionId = transactionId;
-        this.bookId = bookId;
-        this.memberId = memberId;
-        this.borrowDate = borrowDate;
-        this.dueDate = dueDate != null ? dueDate : borrowDate.plusDays(14);
-        this.returnDate = returnDate;
-        this.fineAmount = fineAmount;
-        this.status = status != null && !status.trim().isEmpty() ? status : STATUS_BORROWING;
-    }
     
     //All Getter
     public String getTransactionId()    {return transactionId;}
@@ -61,13 +51,11 @@ public class BorrowingTransaction {
 
     //Methods Basic in Model
     //Method dung de check xem da qua han chua (tra ve true - false)
-    public boolean isOverdue(LocalDate checkDate) { //checkDate thong so truyen vao se la ngay check (hom nay)
+    public boolean isOverdue(LocalDate checkDate) {     //checkDate thong so truyen vao se la ngay check (co the la hom nay)
         if(status.equals(STATUS_RETURNED)) {
-            //Neu da tra thi logic check xem returnDate (ngayTra) co qua han voi dueDate (hanTra) hay khong
-            return returnDate.isAfter(dueDate);
+            return returnDate.isAfter(dueDate);         //Neu da tra thi logic check xem returnDate (ngayTra) co qua han voi dueDate (hanTra) hay khong
         } else {
-            //Neu chua tra thi check xem ngay check (hom nay) co qua han luon chua
-            return checkDate.isAfter(dueDate);
+            return checkDate.isAfter(dueDate);          //Neu chua tra thi check xem ngay check (hom nay) co qua han luon chua
         }
     }
     
@@ -76,28 +64,30 @@ public class BorrowingTransaction {
         if(!isOverdue(checkDate)) {
             return 0;
         } else {
-            LocalDate end = status.equals(STATUS_RETURNED) ? returnDate : checkDate;
+            LocalDate end = status.equals(STATUS_RETURNED) ? returnDate : checkDate; // Da tra thi dem den ngay tra, chua tra thi dem den ngay check
             return (int) ChronoUnit.DAYS.between(dueDate, end);
         }
     }
     
-    //Method nay dung de danh dau sach da duoc tra va can thay doi mot so trang thai
+    //Method nay dung de danh dau giao dich da tra va cap nhat trang thai
     public void markReturned(LocalDate returnDate, double fineAmount) {
         this.returnDate = returnDate;
         this.fineAmount = fineAmount;
         this.status = STATUS_RETURNED;
     }
     
-    public void getTransactionInfo() {
-        System.out.println("====== TRANSACTION INFO ======");
-        System.out.println("Transaction ID : " + transactionId);
-        System.out.println("Book ID        : " + bookId);
-        System.out.println("Member ID      : " + memberId);
-        System.out.println("Borrow Date    : " + borrowDate);
-        System.out.println("Due Date       : " + dueDate);
-        System.out.println("Return Date    : " + returnDate);
-        System.out.println("Fine Amount    : " + fineAmount);
-        System.out.println("Status         : " + status);
+    public void displayTransactionInfo() {
+        String returnStr;
+        if (returnDate == null) {
+            returnStr = "null"; // Neu chua tra sach thi ngay tra la rong = null
+        } else {
+            returnStr = "returnDate.format(FMT)"; // Neu da tra thi gan chuan format dd/MM/yyyy
+        }
+
+        System.out.printf("%-5s | %-5s | %-5s | %s | %s | %-10s | %,.0f VND | %s%n",
+                transactionId, bookId, memberId,
+                borrowDate.format(FMT), dueDate.format(FMT), returnStr,
+                fineAmount, status);
     }
     
 }
