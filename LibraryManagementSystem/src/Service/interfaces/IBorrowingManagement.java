@@ -17,4 +17,7 @@ public interface IBorrowingManagement {
     
     //Xem lich su muon sach cua mot thanh vien
     List<BorrowingTransaction> getBorrowingHistoryByMember(String memberId);
+    
+    //Lay tat ca du lieu cua hoa don
+    List<BorrowingTransaction> getAllTransactions();
 }

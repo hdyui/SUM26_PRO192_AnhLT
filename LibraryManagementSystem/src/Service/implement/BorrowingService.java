@@ -9,10 +9,8 @@ import service.interfaces.IMemberManagement;
 import utils.FileUtils;
 
 import java.time.LocalDate;
-import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
-import java.io.IOException;
 
 
 public class BorrowingService implements IBorrowingManagement {
@@ -24,26 +22,30 @@ public class BorrowingService implements IBorrowingManagement {
     private IBookManagement bookService;
     private IMemberManagement memberService;
     
-    private final String FILE_PATH = "resources/transactions.txt";
+    private final String FILE_PATH = "transactions.txt";
     
     
     //Constructor de nap du lieu khoi dong chuong trinh
     public BorrowingService(IBookManagement bookService, IMemberManagement memberService) {
         this.bookService = bookService;
         this.memberService = memberService;
-        
-        // Đọc dữ liệu từ file khi khởi động chương trình
-        try {
-            this.transactionList = FileUtils.loadTransactionsFromFile(FILE_PATH);
-        } catch (IOException ex) {
-            System.out.println("Failed to load transactions: " + ex.getMessage());
-            this.transactionList = new ArrayList<>();
-        }
-        if (this.transactionList == null) {
-            this.transactionList = new ArrayList<>();
-        }
+        this.transactionList = FileUtils.loadTransactions(FILE_PATH);
+        reconcileCurrentBorrowed();
 
-//        this.transactionList = new ArrayList<>(); //Tam thoi dung de test voi data gia, sau se xoa
+    }
+    
+    
+    private void reconcileCurrentBorrowed() {
+        for (Member m : memberService.getAllMembers()) {
+            int active = 0;
+            for (BorrowingTransaction tx : transactionList) {
+                if (tx.getMemberId().equalsIgnoreCase(m.getMemberId())
+                        && tx.getStatus().equals(BorrowingTransaction.STATUS_BORROWING)) {
+                    active++;
+                }
+            }
+            m.setCurrentBorrowed(active);
+        }
     }
     
     
@@ -51,9 +53,9 @@ public class BorrowingService implements IBorrowingManagement {
     @Override
     public void borrowBook(String memberId, String bookId, LocalDate borrowDate) {
         //Check du lieu input
-        if (memberId == null || memberId.trim().isEmpty() || 
-            bookId == null || bookId.trim().isEmpty() || 
-            borrowDate == null) {
+        if (memberId == null || memberId.trim().isEmpty()
+                || bookId == null || bookId.trim().isEmpty()
+                || borrowDate == null) {
             System.out.println("Error: Invalid input data!");
             return;
         }
@@ -63,11 +65,11 @@ public class BorrowingService implements IBorrowingManagement {
         Book book = bookService.getBookById(bookId);           
 
         if (member == null) {
-            System.out.println("Error: No member with " + memberId);
+            System.out.println("Error: No member with ID " + memberId);
             return;
         }
         if (book == null) {
-            System.out.println("Error: No book with " + bookId);
+            System.out.println("Error: No book with ID " + bookId);
             return;
         }
 
@@ -94,31 +96,32 @@ public class BorrowingService implements IBorrowingManagement {
         member.borrowBook(); 
 
         //Luu du lieu
-        FileUtils.saveTransactionsToFile(this.transactionList, FILE_PATH);
+        bookService.save();
+        memberService.save();
+        FileUtils.saveTransactions(transactionList, FILE_PATH);
 
-        System.out.println("\n---------------------------------------------------");
-        System.out.println("SUCCESS: Book borrowing transaction created!");
-        System.out.println("---------------------------------------------------\n");
+        System.out.println("SUCCESS: Book '" + book.getTitle()
+                + "' borrowed by '" + member.getName() + "'.");
     }
 
     
     @Override
     public void returnBook(String memberId, String bookId, LocalDate returnDate) {
-        if (memberId == null || memberId.trim().isEmpty() || 
-            bookId == null || bookId.trim().isEmpty() || 
-            returnDate == null) {
+        if (memberId == null || memberId.trim().isEmpty()
+                || bookId == null || bookId.trim().isEmpty()
+                || returnDate == null) {
             System.out.println("Error: Invalid input data!");
             return;
         }
 
-        BorrowingTransaction currentTx = findBorrowingTransaction(memberId, bookId);
-        if (currentTx == null) {
-            System.out.println("Error: No borrowing transaction matching this data was found!");
+        BorrowingTransaction tx = findBorrowingTransaction(memberId, bookId);
+        if (tx == null) {
+            System.out.println("Error: No active borrowing transaction found for this data!");
             return;
         }
 
-        if (returnDate.isBefore(currentTx.getBorrowDate())) {
-            System.out.println("Error: The book return date cannot be before the borrowing date!");
+        if (returnDate.isBefore(tx.getBorrowDate())) {
+            System.out.println("Error: Return date cannot be before borrow date!");
             return;
         }
 
@@ -129,26 +132,25 @@ public class BorrowingService implements IBorrowingManagement {
             return;
         }
 
-        long overdueDays = currentTx.calOverdue(returnDate);
-        double fineAmount = FileUtils.calculateFine(overdueDays);
+        int overdueDays = tx.calOverdue(returnDate);
+        double fineAmount = overdueDays * member.getFinePerDay();
 
-        currentTx.markReturned(returnDate, fineAmount);
+        tx.markReturned(returnDate, fineAmount);
 
         book.increaseQuantity();
         member.returnBook(); 
 
-        FileUtils.saveTransactionsToFile(this.transactionList, FILE_PATH);
+        bookService.save();
+        memberService.save();
+        FileUtils.saveTransactions(transactionList, FILE_PATH);
 
-        System.out.println("\n---------------------------------------------------");
         if (fineAmount > 0) {
-            System.out.println("BOOK RETURNED: Book '" + book.getTitle() + "' returned by '" + member.getName() + "'.");
-            System.out.println("OVERDUE      : " + overdueDays + " ngày.");
-            System.out.println("FINE         : " + String.format("%,.0f", fineAmount) + " VND");
+            System.out.printf("BOOK RETURNED: '%s' by '%s'. Overdue %d day(s). Fine: %,.0f VND.%n",
+                    book.getTitle(), member.getName(), overdueDays, fineAmount);
         } else {
-            System.out.println("BOOK RETURNED: Book '" + book.getTitle() + "' returned by '" + member.getName() + "'.");
-            System.out.println("There are no late payment penalties.");
+            System.out.printf("BOOK RETURNED: '%s' by '%s'. No overdue fine.%n",
+                    book.getTitle(), member.getName());
         }
-        System.out.println("---------------------------------------------------\n");
     }
 
     
@@ -178,16 +180,23 @@ public class BorrowingService implements IBorrowingManagement {
         return history;
     }
     
-    
-    private BorrowingTransaction findBorrowingTransaction(String memberId, String bookId) {
-    for (BorrowingTransaction tx : transactionList) {
-        if (tx.getMemberId().equals(memberId)
-                && tx.getBookId().equals(bookId)
-                && tx.getStatus().equals(BorrowingTransaction.STATUS_BORROWING)) { // bắt buộc
-            return tx;
-        }
+    @Override
+    public List<BorrowingTransaction> getAllTransactions() {
+        return transactionList;
     }
-    return null;
-}
+    
+    
+    // Tim giao dich DANG MUON khop member + book.
+    // Bat buoc loc theo STATUS_BORROWING de tranh tim trung giao dich da tra cu.
+    private BorrowingTransaction findBorrowingTransaction(String memberId, String bookId) {
+        for (BorrowingTransaction tx : transactionList) {
+            if (tx.getMemberId().equalsIgnoreCase(memberId)
+                    && tx.getBookId().equalsIgnoreCase(bookId)
+                    && tx.getStatus().equals(BorrowingTransaction.STATUS_BORROWING)) {
+                return tx;
+            }
+        }
+        return null;
+    }
     
 }
