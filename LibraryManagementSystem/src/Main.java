@@ -1,4 +1,8 @@
 import ui.MainMenu;
+<<<<<<< HEAD
+=======
+
+>>>>>>> Huy
 
 public class Main {
 
