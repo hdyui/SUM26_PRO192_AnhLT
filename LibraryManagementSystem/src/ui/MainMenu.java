@@ -94,56 +94,58 @@ public class MainMenu {
     
     private void addBook() {
         System.out.println("----------- ADD BOOK -----------");
-        String id = Input.readNonEmptyString("Book ID (Bxxx): ");
-        if (!Validations.isValidId(id, "B")) {
-            System.out.println("Invalid Book ID format (expected B + 3 digits).");
-            return;
-        }
-
-        // Neu dau sach DA TON TAI -> chi hoi so luong ban muon them, KHONG hoi lai metadata.
-        // Day chinh la cach tranh phai "Add Book" nhieu lan: chi 1 lan nhap quantity,
-        // he thong tu chay vong lap sinh N serial ben trong addCopiesToExistingBook/addNewBookTitle.
-        if (bookService.bookTitleExists(id)) {
-            List<Book> existing = bookService.getCopiesByBookId(id);
-            Book sample = existing.get(0);
-            System.out.println("Book ID already exists: '" + sample.getTitle()
-                    + "' (currently " + existing.size() + " copies, "
-                    + bookService.countAvailable(id) + " available).");
-            int qty = Input.readInt("Enter quantity of NEW copies to add: ");
+        String id = Input.readString("Book ID (leave blank to create a brand NEW book title): ");
+        
+        if (id.isEmpty()) {
+            String title = Input.readNonEmptyString("Title: ");
+            String author = Input.readNonEmptyString("Author: ");
+            String genre = Input.readNonEmptyString("Genre: ");
+            int year = Input.readInt("Publication Year: ");
+            if (!Validations.isValidYear(year)) {
+                System.out.println("Invalid year.");
+                return;
+            }
+            int qty = Input.readInt("Quantity (number of copies to create): ");
             if (!Validations.isValidQuantity(qty)) {
                 System.out.println("Quantity must be >= 1.");
                 return;
             }
-            if (bookService.addCopiesToExistingBook(id, qty)) {
-                System.out.println("Added " + qty + " new copies to existing book '" + sample.getTitle() + "'.");
+
+            String newId = bookService.generateNextBookId();
+            if (bookService.addNewBookTitle(newId, title, author, genre, year, qty)) {
+                System.out.println("New book title '" + title + "' added with ID " + newId
+                        + " (" + qty + " physical copies).");
             } else {
-                System.out.println("Failed to add copies.");
+                System.out.println("Failed to add book.");
             }
             return;
         }
 
-        // Dau sach hoan toan moi -> nhap day du metadata + quantity ban dau
-        String title = Input.readNonEmptyString("Title: ");
-        String author = Input.readNonEmptyString("Author: ");
-        String genre = Input.readNonEmptyString("Genre: ");
-        int year = Input.readInt("Publication Year: ");
-        if (!Validations.isValidYear(year)) {
-            System.out.println("Invalid year.");
+        if (!Validations.isValidId(id, "B")) {
+            System.out.println("Invalid Book ID format (expected B + 3 digits).");
             return;
         }
-        int qty = Input.readInt("Quantity (number of copies to create): ");
+        if (!bookService.bookTitleExists(id)) {
+            System.out.println("Book ID not found. Leave it blank next time to create a new book title.");
+            return;
+        }
+        List<Book> existing = bookService.getCopiesByBookId(id);
+        Book sample = existing.get(0);
+        System.out.println("Book ID exists: '" + sample.getTitle()
+                + "' (currently " + existing.size() + " copies, "
+                + bookService.countAvailable(id) + " available).");
+        int qty = Input.readInt("Enter quantity of NEW copies to add: ");
         if (!Validations.isValidQuantity(qty)) {
             System.out.println("Quantity must be >= 1.");
             return;
         }
-
-        if (bookService.addNewBookTitle(id, title, author, genre, year, qty)) {
-            System.out.println("New book title '" + title + "' added with " + qty + " physical copies.");
+        if (bookService.addCopiesToExistingBook(id, qty)) {
+            System.out.println("Added " + qty + " new copies to existing book '" + sample.getTitle() + "'.");
         } else {
-            System.out.println("Failed to add book.");
+            System.out.println("Failed to add copies.");
         }
     }
-        
+       
     
     
     private void updateBook() {

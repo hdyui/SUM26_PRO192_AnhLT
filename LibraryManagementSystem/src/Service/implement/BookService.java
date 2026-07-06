@@ -73,6 +73,25 @@ public class BookService implements IBookManagement {
     }
 
     @Override
+    public String generateNextBookId() {
+    // Lay so lon nhat trong cac Book ID hien co (dang B + 3 chu so), roi +1.
+    // Dung max thay vi dem so luong dau sach de tranh trung ID neu co dau sach
+    // o giua da bi xoa (remove) truoc do.
+    int maxNum = 0;
+    for (String id : getAllBookIds()) {
+        try {
+            int num = Integer.parseInt(id.substring(1));
+            if (num > maxNum) {
+                maxNum = num;
+            }
+        } catch (Exception e) {
+            // Bo qua neu ID cu khong dung dinh dang chuan B + 3 so
+        }
+    }
+    return String.format("B%03d", maxNum + 1);
+    }
+    
+    @Override
     public List<Book> getCopiesByBookId(String bookId) {
         List<Book> result = new ArrayList<>();
         if (bookId == null) {

@@ -5,6 +5,9 @@ import java.util.List;
 
 public interface IBookManagement {
 
+    // Sinh Book ID tang tien tu dong cho dau sach MOI: B001, B002, B003...
+    String generateNextBookId();
+    
     // Tao DAU SACH MOI hoan toan + sinh quantity ban sao (serial) dau tien cho no
     boolean addNewBookTitle(String bookId, String title, String author, String genre,
                              int year, int quantity);
