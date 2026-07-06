@@ -1,234 +1,210 @@
 package utils;
 
 import model.Book;
-import model.BorrowingTransaction;
 import model.Member;
-import model.PremiumMember;
 import model.RegularMember;
+import model.PremiumMember;
+import model.BorrowingTransaction;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.nio.file.StandardOpenOption;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 
 public class FileUtils {
 
     public static final String RESOURCE_FOLDER = "src/resources";
-    public static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ISO_LOCAL_DATE;
+    public static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
-    public static List<String> readAllLines(String filePath) throws IOException {
-        Path path = resolveResourcePath(filePath);
-        if (Files.notExists(path)) {
+    private static final String SPLIT_REGEX = "\\|";
+    private static final String JOIN_SEP = "|";
+
+    // ===== Cac ham doc/ghi co ban =====
+    private static Path resolvePath(String fileName) {
+        return Paths.get(RESOURCE_FOLDER, fileName);
+    }
+
+    private static List<String> readLines(String fileName) {
+        Path path = resolvePath(fileName);
+        try {
+            if (Files.notExists(path)) {
+                return new ArrayList<>();
+            }
+            return Files.readAllLines(path, StandardCharsets.UTF_8);
+        } catch (IOException e) {
+            System.out.println("Error reading file: " + fileName);
             return new ArrayList<>();
         }
-        return Files.readAllLines(path, StandardCharsets.UTF_8);
     }
 
-    public static String readAllText(String filePath) throws IOException {
-        Path path = resolveResourcePath(filePath);
-        if (Files.notExists(path)) {
-            return "";
+    private static void writeLines(String fileName, List<String> lines) {
+        Path path = resolvePath(fileName);
+        try {
+            if (path.getParent() != null) {
+                Files.createDirectories(path.getParent());
+            }
+            Files.write(path, lines, StandardCharsets.UTF_8);
+        } catch (IOException e) {
+            System.out.println("Error writing file: " + fileName);
         }
-        return Files.readString(path, StandardCharsets.UTF_8);
     }
 
-    public static void writeAllLines(String filePath, List<String> lines) throws IOException {
-        Path path = createPath(resolveResourcePath(filePath));
-        Files.write(path, lines, StandardCharsets.UTF_8, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
-    }
-
-    public static void writeAllText(String filePath, String content) throws IOException {
-        Path path = createPath(resolveResourcePath(filePath));
-        Files.writeString(path, content, StandardCharsets.UTF_8, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
-    }
-
-    public static void appendLines(String filePath, List<String> lines) throws IOException {
-        Path path = createPath(resolveResourcePath(filePath));
-        Files.write(path, lines, StandardCharsets.UTF_8, StandardOpenOption.CREATE, StandardOpenOption.APPEND);
-    }
-
-    public static void appendLine(String filePath, String line) throws IOException {
-        appendLines(filePath, Collections.singletonList(line));
-    }
-
-    public static boolean fileExists(String filePath) {
-        return Files.exists(resolveResourcePath(filePath));
-    }
-
-    public static void generateSampleMembersFile(String resourceFileName) throws IOException {
-        List<String> sampleLines = Arrays.asList(
-            "# memberId | name | phone | email | type",
-            "M001|Nguyen Van A|0901234567|a@gmail.com|Regular",
-            "M002|Tran Thi B|0912345678|b@gmail.com|Premium",
-            "M003|Le Van C|0923456789|c@gmail.com|Regular"
-        );
-        writeAllLines(resourceFileName, sampleLines);
-    }
-
-    public static List<Member> loadMembers() throws IOException {
-        return loadMembers("members.txt");
-    }
-
-    public static void generateSampleMembersFile() throws IOException {
-        generateSampleMembersFile("members.txt");
-    }
-
-    public static List<Book> loadBooks(String resourceFileName) throws IOException {
+    // ===== BOOK =====
+    // Format: bookId|serialNumber|title|author|genre|publicationYear|status
+    // (Khong con quantity/timesBorrowed: so luong = dem so dong cung bookId,
+    //  timesBorrowed tinh dong tu transactions.txt)
+    public static List<Book> loadBooks(String fileName) {
         List<Book> books = new ArrayList<>();
-        for (String line : readAllLines(resourceFileName)) {
-            String trimmed = line.trim();
-            if (trimmed.isEmpty() || trimmed.startsWith("#")) {
+        for (String line : readLines(fileName)) {
+            if (line.trim().isEmpty() || line.startsWith("#")) {
                 continue;
             }
-            Book book = parseBook(trimmed);
-            if (book != null) {
-                books.add(book);
+            String[] p = line.split(SPLIT_REGEX);
+            if (p.length < 7) {
+                continue;
+            }
+            try {
+                String bookId = p[0].trim();
+                String serialNumber = p[1].trim();
+                String title = p[2].trim();
+                String author = p[3].trim();
+                String genre = p[4].trim();
+                int year = Integer.parseInt(p[5].trim());
+                String status = p[6].trim();
+                books.add(new Book(bookId, serialNumber, title, author, genre, year, status));
+            } catch (NumberFormatException e) {
+                System.out.println("Skip invalid book line: " + line);
             }
         }
         return books;
     }
 
-    public static List<Member> loadMembers(String resourceFileName) throws IOException {
+    public static void saveBooks(List<Book> books, String fileName) {
+        List<String> lines = new ArrayList<>();
+        for (Book b : books) {
+            lines.add(String.join(JOIN_SEP,
+                    b.getBookId(),
+                    b.getSerialNumber(),
+                    b.getTitle(),
+                    b.getAuthor(),
+                    b.getGenre(),
+                    String.valueOf(b.getPublicationYear()),
+                    b.getStatus()));
+        }
+        writeLines(fileName, lines);
+    }
+
+    // ===== MEMBER =====
+    // Format: memberId|name|phone|email|memberType|totalBorrowings
+    // (memberId = "M" + phone, sinh tu dong luc tao, van luu phone rieng de tien hien thi)
+    public static List<Member> loadMembers(String fileName) {
         List<Member> members = new ArrayList<>();
-        for (String line : readAllLines(resourceFileName)) {
-            String trimmed = line.trim();
-            if (trimmed.isEmpty() || trimmed.startsWith("#")) {
+        for (String line : readLines(fileName)) {
+            if (line.trim().isEmpty() || line.startsWith("#")) {
                 continue;
             }
-            Member member = parseMember(trimmed);
-            if (member != null) {
-                members.add(member);
+            String[] p = line.split(SPLIT_REGEX);
+            if (p.length < 6) {
+                continue;
+            }
+            try {
+                String memberId = p[0].trim();
+                String name = p[1].trim();
+                String phone = p[2].trim();
+                String email = p[3].trim();
+                String type = p[4].trim();
+                int total = Integer.parseInt(p[5].trim());
+
+                Member m;
+                if (type.equalsIgnoreCase("PREMIUM")) {
+                    m = new PremiumMember(memberId, name, phone, email);
+                } else {
+                    m = new RegularMember(memberId, name, phone, email);
+                }
+                m.setTotalBorrowings(total);
+                members.add(m);
+            } catch (NumberFormatException e) {
+                System.out.println("Skip invalid member line: " + line);
             }
         }
         return members;
     }
 
-    public static List<BorrowingTransaction> loadTransactions(String resourceFileName) throws IOException {
-        List<BorrowingTransaction> transactions = new ArrayList<>();
-        for (String line : readAllLines(resourceFileName)) {
-            String trimmed = line.trim();
-            if (trimmed.isEmpty() || trimmed.startsWith("#")) {
+    public static void saveMembers(List<Member> members, String fileName) {
+        List<String> lines = new ArrayList<>();
+        for (Member m : members) {
+            lines.add(String.join(JOIN_SEP,
+                    m.getMemberId(),
+                    m.getName(),
+                    m.getPhone(),
+                    m.getEmail(),
+                    m.getMemberType(),
+                    String.valueOf(m.getTotalBorrowings())));
+        }
+        writeLines(fileName, lines);
+    }
+
+    // ===== TRANSACTION =====
+    // Format: receiptId|transactionId|serialNumber|bookId|memberId|borrowDate|dueDate|returnDate|fineAmount|status
+    public static List<BorrowingTransaction> loadTransactions(String fileName) {
+        List<BorrowingTransaction> list = new ArrayList<>();
+        for (String line : readLines(fileName)) {
+            if (line.trim().isEmpty() || line.startsWith("#")) {
                 continue;
             }
-            BorrowingTransaction transaction = parseTransaction(trimmed);
-            if (transaction != null) {
-                transactions.add(transaction);
+            String[] p = line.split(SPLIT_REGEX);
+            if (p.length < 10) {
+                continue;
+            }
+            try {
+                String receiptId = p[0].trim();
+                String txId = p[1].trim();
+                String serialNumber = p[2].trim();
+                String bookId = p[3].trim();
+                String memberId = p[4].trim();
+                LocalDate borrowDate = LocalDate.parse(p[5].trim(), DATE_FORMAT);
+                String returnRaw = p[7].trim();
+                double fine = Double.parseDouble(p[8].trim());
+                String status = p[9].trim();
+
+                BorrowingTransaction tx = new BorrowingTransaction(
+                        receiptId, txId, serialNumber, bookId, memberId, borrowDate);
+                if (status.equalsIgnoreCase(BorrowingTransaction.STATUS_RETURNED)
+                        && !returnRaw.equalsIgnoreCase("null")) {
+                    LocalDate returnDate = LocalDate.parse(returnRaw, DATE_FORMAT);
+                    tx.markReturned(returnDate, fine);
+                }
+                list.add(tx);
+            } catch (Exception e) {
+                System.out.println("Skip invalid transaction line: " + line);
             }
         }
-        return transactions;
+        return list;
     }
 
-    public static List<BorrowingTransaction> loadTransactionsFromFile(String resourceFileName) throws IOException {
-        return loadTransactions(resourceFileName);
-    }
-
-    public static Path resolveResourcePath(String resourceFileName) {
-        Path direct = Paths.get(resourceFileName);
-        if (Files.exists(direct)) {
-            return direct;
+    public static void saveTransactions(List<BorrowingTransaction> list, String fileName) {
+        List<String> lines = new ArrayList<>();
+        for (BorrowingTransaction tx : list) {
+            String returnStr = (tx.getReturnDate() == null)
+                    ? "null"
+                    : tx.getReturnDate().format(DATE_FORMAT);
+            lines.add(String.join(JOIN_SEP,
+                    tx.getReceiptId(),
+                    tx.getTransactionId(),
+                    tx.getSerialNumber(),
+                    tx.getBookId(),
+                    tx.getMemberId(),
+                    tx.getBorrowDate().format(DATE_FORMAT),
+                    tx.getDueDate().format(DATE_FORMAT),
+                    returnStr,
+                    String.format("%.0f", tx.getFineAmount()),
+                    tx.getStatus()));
         }
-
-        Path resourcePath = Paths.get(RESOURCE_FOLDER, resourceFileName);
-        if (Files.exists(resourcePath)) {
-            return resourcePath;
-        }
-
-        Path fallback = Paths.get("resources", resourceFileName);
-        if (Files.exists(fallback)) {
-            return fallback;
-        }
-
-        return resourcePath;
-    }
-
-    private static Path createPath(Path path) throws IOException {
-        Path parent = path.getParent();
-        if (parent != null && Files.notExists(parent)) {
-            Files.createDirectories(parent);
-        }
-        if (Files.notExists(path)) {
-            Files.createFile(path);
-        }
-        return path;
-    }
-
-    private static Book parseBook(String line) {
-        String[] parts = line.split("[|,]");
-        if (parts.length < 3) {
-            return null;
-        }
-        String bookId = parts[0].trim();
-        String title = parts[1].trim();
-        String author = parts.length > 2 ? parts[2].trim() : "";
-        String publisher = parts.length > 3 ? parts[3].trim() : "";
-        int year = parts.length > 4 ? parseInt(parts[4].trim()) : 0;
-        int availableCopies = parts.length > 5 ? parseInt(parts[5].trim()) : 0;
-        return new Book(bookId, title, author, publisher, year, availableCopies);
-    }
-
-    private static Member parseMember(String line) {
-        String[] parts = line.split("[|,]");
-        if (parts.length < 4) {
-            return null;
-        }
-        String memberId = parts[0].trim();
-        String name = parts[1].trim();
-        String phone = parts[2].trim();
-        String email = parts[3].trim();
-        String memberType = parts.length > 4 ? parts[4].trim() : "Regular";
-
-        if (memberType.equalsIgnoreCase("Premium")) {
-            return new PremiumMember(memberId, name, phone, email);
-        }
-        return new RegularMember(memberId, name, phone, email);
-    }
-
-    private static BorrowingTransaction parseTransaction(String line) {
-        String[] parts = line.split("[|,]");
-        if (parts.length < 4) {
-            return null;
-        }
-        String transactionId = parts[0].trim();
-        String bookId = parts[1].trim();
-        String memberId = parts[2].trim();
-        LocalDate borrowDate = parseDate(parts[3].trim());
-        LocalDate dueDate = parts.length > 4 ? parseDate(parts[4].trim()) : borrowDate != null ? borrowDate.plusDays(14) : null;
-        LocalDate returnDate = parts.length > 5 ? parseDate(parts[5].trim()) : null;
-        double fineAmount = parts.length > 6 ? parseDouble(parts[6].trim()) : 0.0;
-        String status = parts.length > 7 ? parts[7].trim() : BorrowingTransaction.STATUS_BORROWING;
-        return new BorrowingTransaction(transactionId, bookId, memberId, borrowDate, dueDate, returnDate, fineAmount, status);
-    }
-
-    private static double parseDouble(String value) {
-        try {
-            return Double.parseDouble(value);
-        } catch (NumberFormatException ex) {
-            return 0.0;
-        }
-    }
-
-    private static int parseInt(String value) {
-        try {
-            return Integer.parseInt(value);
-        } catch (NumberFormatException ex) {
-            return 0;
-        }
-    }
-
-    private static LocalDate parseDate(String value) {
-        try {
-            return LocalDate.parse(value, DATE_FORMAT);
-        } catch (Exception ex) {
-            return null;
-        }
+        writeLines(fileName, lines);
     }
 }
-

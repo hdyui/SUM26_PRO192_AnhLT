@@ -1,5 +1,4 @@
-# memberId | name | phone | email | type
-M001|Nguyen Van A|0901234567|a@gmail.com|Regular
-M002|Tran Thi B|0912345678|b@gmail.com|Premium
-M003|Le Van C|0923456789|c@gmail.com|Regular
-M004|Le Van Nhat Vuong|1293819283|c@gmail.com|Premium
+# memberId|name|phone|email|memberType|totalBorrowings
+M0901234567|Nguyen Van A|0901234567|a@gmail.com|REGULAR|5
+M0912345678|Tran Thi B|0912345678|b@gmail.com|PREMIUM|12
+M0923456789|Le Van C|0923456789|c@gmail.com|REGULAR|2

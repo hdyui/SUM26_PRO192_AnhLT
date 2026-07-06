@@ -7,30 +7,34 @@ import java.time.temporal.ChronoUnit;
 public class BorrowingTransaction {
     
     public static final String STATUS_BORROWING = "BORROWING";
-    public static final String STATUS_RETURNED = "RETURNED";\
+    public static final String STATUS_RETURNED = "RETURNED";
     public static final DateTimeFormatter FMT = DateTimeFormatter.ofPattern("dd/MM/yyyy");
     
+     private String receiptId;
     private String transactionId;
+    private String serialNumber;
     private String bookId;
     private String memberId;
-    
+
     private LocalDate borrowDate;
     private LocalDate dueDate;
     private LocalDate returnDate;
-    
+
     private double fineAmount;
     private String status;
 
-    public BorrowingTransaction(String transactionId, String bookId, String memberId, LocalDate borrowDate) {
+    public BorrowingTransaction(String receiptId, String transactionId, String serialNumber,
+                                 String bookId, String memberId, LocalDate borrowDate) {
+        this.receiptId = receiptId;
         this.transactionId = transactionId;
+        this.serialNumber = serialNumber;
         this.bookId = bookId;
         this.memberId = memberId;
         this.borrowDate = borrowDate;
-        
-        //Khong input vao ma dung logic: han tra là 14 ngay sau ngay muon
+
+        // Han tra = 14 ngay sau ngay muon
         this.dueDate = borrowDate.plusDays(14);
-        
-        
+
         //Gia tri mac dinh khi moi muon
         this.returnDate = null;
         this.fineAmount = 0.0;
@@ -39,14 +43,16 @@ public class BorrowingTransaction {
 
     
     //All Getter
-    public String getTransactionId()    {return transactionId;}
-    public String getBookId()           {return bookId;}
-    public String getMemberId()         {return memberId;}
-    public LocalDate getBorrowDate()    {return borrowDate;}
-    public LocalDate getDueDate()       {return dueDate;}
-    public LocalDate getReturnDate()    {return returnDate;}
-    public double getFineAmount()       {return fineAmount;}
-    public String getStatus()           {return status;}
+    public String getReceiptId()     { return receiptId; }
+    public String getTransactionId() { return transactionId; }
+    public String getSerialNumber()  { return serialNumber; }
+    public String getBookId()        { return bookId; }
+    public String getMemberId()      { return memberId; }
+    public LocalDate getBorrowDate() { return borrowDate; }
+    public LocalDate getDueDate()    { return dueDate; }
+    public LocalDate getReturnDate() { return returnDate; }
+    public double getFineAmount()    { return fineAmount; }
+    public String getStatus()        { return status; }
     
 
     //Methods Basic in Model
@@ -77,15 +83,10 @@ public class BorrowingTransaction {
     }
     
     public void displayTransactionInfo() {
-        String returnStr;
-        if (returnDate == null) {
-            returnStr = "null"; // Neu chua tra sach thi ngay tra la rong = null
-        } else {
-            returnStr = "returnDate.format(FMT)"; // Neu da tra thi gan chuan format dd/MM/yyyy
-        }
+        String returnStr = (returnDate == null) ? "null" : returnDate.format(FMT);
 
-        System.out.printf("%-5s | %-5s | %-5s | %s | %s | %-10s | %,.0f VND | %s%n",
-                transactionId, bookId, memberId,
+        System.out.printf("%-14s | %-5s | %-12s | %-6s | %-12s | %s | %s | %-10s | %,.0f VND | %s%n",
+                receiptId, transactionId, serialNumber, bookId, memberId,
                 borrowDate.format(FMT), dueDate.format(FMT), returnStr,
                 fineAmount, status);
     }

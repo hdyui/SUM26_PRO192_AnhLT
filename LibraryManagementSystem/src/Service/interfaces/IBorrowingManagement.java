@@ -1,23 +1,23 @@
 package service.interfaces;
 
 import model.BorrowingTransaction;
-import java.util.List;
 import java.time.LocalDate;
+import java.util.List;
 
 public interface IBorrowingManagement {
-    
-    //Method tao giao dich muon sach
-    void borrowBook(String memberId, String bookId, LocalDate borrowDate);
-    
-    //Method tra sach
+
+    // Muon NHIEU sach cung luc cho 1 memberId, chung 1 receiptId tu sinh (Master-Detail).
+    // Voi moi bookId trong danh sach, he thong tu tim serial AVAILABLE dau tien de gan.
+    void borrowBooks(String memberId, List<String> bookIds, LocalDate borrowDate);
+
     void returnBook(String memberId, String bookId, LocalDate returnDate);
-    
-    //Xem danh sach dang duoc muon
+
+    // Tim giao dich DANG MUON (BORROWING) theo serialNumber -> dung cho search sach mode 2
+    BorrowingTransaction findActiveTransactionBySerial(String serialNumber);
+
     List<BorrowingTransaction> getCurrentlyBorrowedBooks();
-    
-    //Xem lich su muon sach cua mot thanh vien
+
     List<BorrowingTransaction> getBorrowingHistoryByMember(String memberId);
-    
-    //Lay tat ca du lieu cua hoa don
+
     List<BorrowingTransaction> getAllTransactions();
 }

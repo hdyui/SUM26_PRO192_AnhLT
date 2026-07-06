@@ -22,16 +22,15 @@ public class BorrowingService implements IBorrowingManagement {
     private IBookManagement bookService;
     private IMemberManagement memberService;
     
-    private final String FILE_PATH = "transactions.txt";
+    private final String FILE_NAME = "transactions.txt";
     
     
     //Constructor de nap du lieu khoi dong chuong trinh
     public BorrowingService(IBookManagement bookService, IMemberManagement memberService) {
         this.bookService = bookService;
         this.memberService = memberService;
-        this.transactionList = FileUtils.loadTransactions(FILE_PATH);
+        this.transactionList = FileUtils.loadTransactions(FILE_NAME);
         reconcileCurrentBorrowed();
-
     }
     
     
@@ -48,60 +47,70 @@ public class BorrowingService implements IBorrowingManagement {
         }
     }
     
+    // Sinh transactionId tang tien dua tren so luong giao dich hien co: T001, T002, ...
+    private String generateTransactionId() {
+        return String.format("T%03d", transactionList.size() + 1);
+    }
     
     //METHOD
     @Override
-    public void borrowBook(String memberId, String bookId, LocalDate borrowDate) {
-        //Check du lieu input
+    public void borrowBooks(String memberId, List<String> bookIds, LocalDate borrowDate) {
         if (memberId == null || memberId.trim().isEmpty()
-                || bookId == null || bookId.trim().isEmpty()
+                || bookIds == null || bookIds.isEmpty()
                 || borrowDate == null) {
             System.out.println("Error: Invalid input data!");
             return;
         }
 
-        // Tim member va book xem co ton tai khong
-        Member member = memberService.getMemberById(memberId); 
-        Book book = bookService.getBookById(bookId);           
-
+        Member member = memberService.getMemberById(memberId);
         if (member == null) {
             System.out.println("Error: No member with ID " + memberId);
             return;
         }
-        if (book == null) {
-            System.out.println("Error: No book with ID " + bookId);
-            return;
+
+        // Sinh Receipt ID DUY NHAT cho CA LAN muon nay (gom nhom cac transaction nho)
+        String receiptId = "REC" + System.currentTimeMillis();
+
+        int successCount = 0;
+        for (String bookId : bookIds) {
+            if (bookId == null || bookId.trim().isEmpty()) {
+                continue;
+            }
+
+            // Kiem tra gioi han moi luot, vi member co the vua dat gioi han
+            // ngay giua vong lap (sau vai cuon da muon thanh cong o tren).
+            if (!member.canBorrowBook()) {
+                System.out.println("Error: Member " + memberId + " reached borrowing limit ("
+                        + member.getBorrowingLimit() + "). Stop borrowing further books.");
+                break;
+            }
+
+            // Thuat toan Auto-assign: tim ban sao AVAILABLE dau tien cua dau sach nay
+            Book copy = bookService.findFirstAvailableCopy(bookId);
+            if (copy == null) {
+                System.out.println("Error: Book '" + bookId + "' is out of stock (no available copy). Skipped.");
+                continue;
+            }
+
+            String transactionId = generateTransactionId();
+            BorrowingTransaction tx = new BorrowingTransaction(
+                    receiptId, transactionId, copy.getSerialNumber(), bookId, memberId, borrowDate);
+            transactionList.add(tx);
+
+            copy.markBorrowed();
+            member.borrowBook();
+            successCount++;
+
+            System.out.println("SUCCESS: Borrowed '" + copy.getTitle()
+                    + "' - Serial: " + copy.getSerialNumber());
         }
 
-        // Check dieu kien muon sach
-        if (!member.canBorrowBook()) {
-            System.out.println("Error: Member has reached the book borrowing limit!");
-            return;
-        }
-        if (!book.isAvailable()) {
-            System.out.println("Error: This book is currently out of stock!");
-            return;
-        }
-
-        // Neu duyet het thi create giao dich muon
-        String transactionId = String.format("T%03d", transactionList.size() + 1); 
-        BorrowingTransaction newTransaction = new BorrowingTransaction(transactionId, bookId, memberId, borrowDate);
-
-        // Them vao list
-        transactionList.add(newTransaction);
-
-        //Update du lieu
-        book.decreaseQuantity();
-        book.increaseTimesBorrowed();
-        member.borrowBook(); 
-
-        //Luu du lieu
         bookService.save();
         memberService.save();
-        FileUtils.saveTransactions(transactionList, FILE_PATH);
+        FileUtils.saveTransactions(transactionList, FILE_NAME);
 
-        System.out.println("SUCCESS: Book '" + book.getTitle()
-                + "' borrowed by '" + member.getName() + "'.");
+        System.out.println("Receipt " + receiptId + ": " + successCount + "/" + bookIds.size()
+                + " book(s) borrowed successfully.");
     }
 
     
@@ -114,6 +123,7 @@ public class BorrowingService implements IBorrowingManagement {
             return;
         }
 
+        // Tim ban sao DAU TIEN dang duoc member nay muon khop bookId
         BorrowingTransaction tx = findBorrowingTransaction(memberId, bookId);
         if (tx == null) {
             System.out.println("Error: No active borrowing transaction found for this data!");
@@ -125,9 +135,9 @@ public class BorrowingService implements IBorrowingManagement {
             return;
         }
 
-        Book book = bookService.getBookById(bookId);
+        Book copy = bookService.getCopyBySerial(tx.getSerialNumber());
         Member member = memberService.getMemberById(memberId);
-        if (book == null || member == null) {
+        if (copy == null || member == null) {
             System.out.println("Error: System error, original data not found.");
             return;
         }
@@ -137,29 +147,39 @@ public class BorrowingService implements IBorrowingManagement {
 
         tx.markReturned(returnDate, fineAmount);
 
-        book.increaseQuantity();
-        member.returnBook(); 
+        copy.markAvailable();
+        member.returnBook();
 
         bookService.save();
         memberService.save();
-        FileUtils.saveTransactions(transactionList, FILE_PATH);
+        FileUtils.saveTransactions(transactionList, FILE_NAME);
 
         if (fineAmount > 0) {
-            System.out.printf("BOOK RETURNED: '%s' by '%s'. Overdue %d day(s). Fine: %,.0f VND.%n",
-                    book.getTitle(), member.getName(), overdueDays, fineAmount);
+            System.out.printf("BOOK RETURNED: '%s' (Serial: %s) by '%s'. Overdue %d day(s). Fine: %,.0f VND.%n",
+                    copy.getTitle(), copy.getSerialNumber(), member.getName(), overdueDays, fineAmount);
         } else {
-            System.out.printf("BOOK RETURNED: '%s' by '%s'. No overdue fine.%n",
-                    book.getTitle(), member.getName());
+            System.out.printf("BOOK RETURNED: '%s' (Serial: %s) by '%s'. No overdue fine.%n",
+                    copy.getTitle(), copy.getSerialNumber(), member.getName());
         }
+    }
+    
+    
+    @Override
+    public BorrowingTransaction findActiveTransactionBySerial(String serialNumber) {
+        for (BorrowingTransaction tx : transactionList) {
+            if (tx.getSerialNumber().equalsIgnoreCase(serialNumber)
+                    && tx.getStatus().equals(BorrowingTransaction.STATUS_BORROWING)) {
+                return tx;
+            }
+        }
+        return null;
     }
 
     
     @Override
     public List<BorrowingTransaction> getCurrentlyBorrowedBooks() {
         List<BorrowingTransaction> result = new ArrayList<>();
-        for (int i = 0; i < transactionList.size(); i++) {
-            BorrowingTransaction tx = transactionList.get(i);
-            
+        for (BorrowingTransaction tx : transactionList) {
             if (tx.getStatus().equals(BorrowingTransaction.STATUS_BORROWING)) {
                 result.add(tx);
             }
@@ -167,18 +187,18 @@ public class BorrowingService implements IBorrowingManagement {
         return result;
     }
 
+    
     @Override
     public List<BorrowingTransaction> getBorrowingHistoryByMember(String memberId) {
         List<BorrowingTransaction> history = new ArrayList<>();
-        for (int i = 0; i < transactionList.size(); i++) {
-            BorrowingTransaction tx = transactionList.get(i);
-            
-            if (tx.getMemberId().equals(memberId)) {
+        for (BorrowingTransaction tx : transactionList) {
+            if (tx.getMemberId().equalsIgnoreCase(memberId)) {
                 history.add(tx);
             }
         }
         return history;
     }
+    
     
     @Override
     public List<BorrowingTransaction> getAllTransactions() {

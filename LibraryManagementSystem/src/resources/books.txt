@@ -1,0 +1,9 @@
+# bookId|serialNumber|title|author|genre|publicationYear|status
+B001|B001284915|The Great Gatsby|F. Scott Fitzgerald|Classic|1925|AVAILABLE
+B001|B001673210|The Great Gatsby|F. Scott Fitzgerald|Classic|1925|AVAILABLE
+B002|B002938112|1984|George Orwell|Dystopian|1949|AVAILABLE
+B002|B002019283|1984|George Orwell|Dystopian|1949|BORROWED
+B003|B003774411|Clean Code|Robert C. Martin|Technology|2008|BORROWED
+B004|B004551029|The Pragmatic Programmer|Andrew Hunt|Technology|1999|AVAILABLE
+B005|B005338291|Sapiens|Yuval Noah Harari|History|2011|AVAILABLE
+B005|B005550021|Sapiens|Yuval Noah Harari|History|2011|AVAILABLE

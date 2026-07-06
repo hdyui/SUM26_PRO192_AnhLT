@@ -17,6 +17,7 @@ import utils.Input;
 import utils.Validations;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 
 
@@ -57,10 +58,10 @@ public class MainMenu {
                 case 2: memberMenu(); break;
                 case 3: borrowingMenu(); break;
                 case 4: reportMenu(); break;
-                case 5: running = false; System.out.println("Goodbye, thanks for working!"); break;
+                case 5: running = false; System.out.println("Goodbye!"); break;
                 default: System.out.println("Invalid option.");
             }
-        } 
+        }
     }
     
     
@@ -75,7 +76,7 @@ public class MainMenu {
             System.out.println("2. Update book");
             System.out.println("3. Remove book");
             System.out.println("4. View all books");
-            System.out.println("5. Search books");
+            System.out.println("5. Search books (by Book ID / Serial / keyword)");
             System.out.println("0. Back");
             int c = Input.readInt("Choose: ");
             switch (c) {
@@ -98,10 +99,30 @@ public class MainMenu {
             System.out.println("Invalid Book ID format (expected B + 3 digits).");
             return;
         }
-        if (bookService.getBookById(id) != null) {
-            System.out.println("Book ID already exists.");
+
+        // Neu dau sach DA TON TAI -> chi hoi so luong ban muon them, KHONG hoi lai metadata.
+        // Day chinh la cach tranh phai "Add Book" nhieu lan: chi 1 lan nhap quantity,
+        // he thong tu chay vong lap sinh N serial ben trong addCopiesToExistingBook/addNewBookTitle.
+        if (bookService.bookTitleExists(id)) {
+            List<Book> existing = bookService.getCopiesByBookId(id);
+            Book sample = existing.get(0);
+            System.out.println("Book ID already exists: '" + sample.getTitle()
+                    + "' (currently " + existing.size() + " copies, "
+                    + bookService.countAvailable(id) + " available).");
+            int qty = Input.readInt("Enter quantity of NEW copies to add: ");
+            if (!Validations.isValidQuantity(qty)) {
+                System.out.println("Quantity must be >= 1.");
+                return;
+            }
+            if (bookService.addCopiesToExistingBook(id, qty)) {
+                System.out.println("Added " + qty + " new copies to existing book '" + sample.getTitle() + "'.");
+            } else {
+                System.out.println("Failed to add copies.");
+            }
             return;
         }
+
+        // Dau sach hoan toan moi -> nhap day du metadata + quantity ban dau
         String title = Input.readNonEmptyString("Title: ");
         String author = Input.readNonEmptyString("Author: ");
         String genre = Input.readNonEmptyString("Genre: ");
@@ -110,97 +131,143 @@ public class MainMenu {
             System.out.println("Invalid year.");
             return;
         }
-        int qty = Input.readInt("Quantity: ");
+        int qty = Input.readInt("Quantity (number of copies to create): ");
         if (!Validations.isValidQuantity(qty)) {
-            System.out.println("Quantity cannot be negative.");
+            System.out.println("Quantity must be >= 1.");
             return;
         }
-        Book book = new Book(id, title, author, genre, year, qty);
-        if (bookService.addBook(book)) {
-            System.out.println("Book added successfully.");
+
+        if (bookService.addNewBookTitle(id, title, author, genre, year, qty)) {
+            System.out.println("New book title '" + title + "' added with " + qty + " physical copies.");
         } else {
             System.out.println("Failed to add book.");
         }
     }
+        
     
     
     private void updateBook() {
         System.out.println("----------- UPDATE BOOK -----------");
         String id = Input.readNonEmptyString("Enter Book ID: ");
-        Book book = bookService.getBookById(id);
-        if (book == null) {
+        if (!bookService.bookTitleExists(id)) {
             System.out.println("Book not found.");
             return;
         }
-        System.out.println("Current info:");
-        book.displayBookInfo();
+        List<Book> copies = bookService.getCopiesByBookId(id);
+        System.out.println("Current info (applies to all " + copies.size() + " copies of this title):");
+        copies.get(0).displayBookInfo();
 
-        // Bo trong de giu nguyen gia tri cu
         String title = Input.readString("New Title (blank to skip): ");
-        if (!title.isEmpty()) book.setTitle(title);
         String author = Input.readString("New Author (blank to skip): ");
-        if (!author.isEmpty()) book.setAuthor(author);
         String genre = Input.readString("New Genre (blank to skip): ");
-        if (!genre.isEmpty()) book.setGenre(genre);
-        String qtyRaw = Input.readString("New Quantity (blank to skip): ");
-        if (!qtyRaw.isEmpty()) {
+        String yearRaw = Input.readString("New Publication Year (blank to skip): ");
+
+        int year = -1;
+        if (!yearRaw.isEmpty()) {
             try {
-                book.setQuantity(Integer.parseInt(qtyRaw));
+                year = Integer.parseInt(yearRaw);
             } catch (NumberFormatException e) {
-                System.out.println("Invalid quantity, skipped.");
+                System.out.println("Invalid year, skipped.");
+                year = -1;
             }
         }
-        bookService.save();
+
+        bookService.updateBookInfo(id,
+                title.isEmpty() ? null : title,
+                author.isEmpty() ? null : author,
+                genre.isEmpty() ? null : genre,
+                year);
         System.out.println("Book updated successfully.");
     }
 
     
     private void removeBook() {
         System.out.println("----------- REMOVE BOOK -----------");
-        String id = Input.readNonEmptyString("Enter Book ID: ");
-        Book book = bookService.getBookById(id);
-        if (book == null) {
-            System.out.println("Book not found.");
-            return;
-        }
-        // BR: chi xoa khi khong co ban nao dang bi muon
-        if (isBookCurrentlyBorrowed(id)) {
-            System.out.println("Cannot remove: this book is currently borrowed.");
-            return;
-        }
-        if (bookService.removeBook(id)) {
-            System.out.println("Book removed successfully.");
+        System.out.println("1. Remove ONE specific copy (by Serial Number)");
+        System.out.println("2. Remove ENTIRE book title (all copies)");
+        int c = Input.readInt("Choose: ");
+        if (c == 1) {
+            String serial = Input.readNonEmptyString("Enter Serial Number: ");
+            if (bookService.removeCopy(serial)) {
+                System.out.println("Copy " + serial + " removed successfully.");
+            } else {
+                System.out.println("Cannot remove: copy not found, or it is currently borrowed.");
+            }
+        } else if (c == 2) {
+            String id = Input.readNonEmptyString("Enter Book ID: ");
+            if (bookService.removeBookTitle(id)) {
+                System.out.println("Book title " + id + " (all copies) removed successfully.");
+            } else {
+                System.out.println("Cannot remove: title not found, or some copies are currently borrowed.");
+            }
         } else {
-            System.out.println("Failed to remove book.");
+            System.out.println("Invalid option.");
         }
     }
 
     
-    private boolean isBookCurrentlyBorrowed(String bookId) {
-        for (BorrowingTransaction tx : borrowingService.getCurrentlyBorrowedBooks()) {
-            if (tx.getBookId().equalsIgnoreCase(bookId)) {
-                return true;
-            }
-        }
-        return false;
-    }
+//    private boolean isBookCurrentlyBorrowed(String bookId) {
+//        for (BorrowingTransaction tx : borrowingService.getCurrentlyBorrowedBooks()) {
+//            if (tx.getBookId().equalsIgnoreCase(bookId)) {
+//                return true;
+//            }
+//        }
+//        return false;
+//    }
 
     
     private void viewAllBooks() {
-        System.out.println("----------- BOOK LIST -----------");
-        List<Book> books = bookService.getAllBooks();
-        if (books.isEmpty()) {
+        System.out.println("----------- BOOK LIST (grouped by title) -----------");
+        List<String> ids = bookService.getAllBookIds();
+        if (ids.isEmpty()) {
             System.out.println("No books.");
             return;
         }
-        for (Book b : books) {
-            b.displayBookInfo();
+        for (String id : ids) {
+            List<Book> copies = bookService.getCopiesByBookId(id);
+            Book sample = copies.get(0);
+            System.out.printf("%n%s | %s | %s | %s | %d | total:%d | available:%d%n",
+                    id, sample.getTitle(), sample.getAuthor(), sample.getGenre(),
+                    sample.getPublicationYear(), copies.size(), bookService.countAvailable(id));
+            for (Book b : copies) {
+                System.out.println("    - Serial: " + b.getSerialNumber() + " | Status: " + b.getStatus());
+            }
         }
     }
 
     
+    // Ho tro 2 che do tim kiem theo yeu cau:
+    // 1. Nhap Book ID (VD B001)      -> liet ke TOAN BO ban sao cua dau sach + trang thai.
+    // 2. Nhap Serial Number chinh xac -> chi 1 ban sao, cross-check ai dang muon neu BORROWED.
+    // 3. Fallback: neu khong khop ca 2 mode tren, tim theo tu khoa title/author/genre.
     private void searchBooks() {
-        String kw = Input.readNonEmptyString("Search keyword: ");
+        String kw = Input.readNonEmptyString("Enter Book ID / Serial Number / keyword: ");
+
+        Book exactCopy = bookService.getCopyBySerial(kw);
+        if (exactCopy != null) {
+            System.out.println("Found 1 physical copy:");
+            exactCopy.displayBookInfo();
+            if (exactCopy.getStatus().equals(Book.STATUS_BORROWED)) {
+                BorrowingTransaction tx = borrowingService.findActiveTransactionBySerial(exactCopy.getSerialNumber());
+                if (tx != null) {
+                    Member m = memberService.getMemberById(tx.getMemberId());
+                    String name = (m != null) ? m.getName() : "?";
+                    System.out.println("Currently borrowed by: " + tx.getMemberId() + " - " + name
+                            + " | Due date: " + tx.getDueDate());
+                }
+            }
+            return;
+        }
+
+        List<Book> copiesOfTitle = bookService.getCopiesByBookId(kw);
+        if (!copiesOfTitle.isEmpty()) {
+            System.out.println("Book title '" + kw + "' has " + copiesOfTitle.size() + " copy(ies):");
+            for (Book b : copiesOfTitle) {
+                b.displayBookInfo();
+            }
+            return;
+        }
+
         List<Book> result = bookService.searchBooks(kw);
         if (result.isEmpty()) {
             System.out.println("No book found.");
@@ -241,21 +308,20 @@ public class MainMenu {
     
     private void addMember() {
         System.out.println("----------- ADD MEMBER -----------");
-        String id = Input.readNonEmptyString("Member ID (Mxxx): ");
-        if (!Validations.isValidId(id, "M")) {
-            System.out.println("Invalid Member ID format (expected M + 3 digits).");
-            return;
-        }
-        if (memberService.getMemberById(id) != null) {
-            System.out.println("Member ID already exists.");
-            return;
-        }
-        String name = Input.readNonEmptyString("Name: ");
-        String phone = Input.readNonEmptyString("Phone: ");
+        // Member ID KHONG con nhap tay: sinh tu dong tu SDT theo dinh dang M[SDT]
+        String phone = Input.readNonEmptyString("Phone number: ");
         if (!Validations.isValidPhone(phone)) {
             System.out.println("Invalid phone number.");
             return;
         }
+        if (memberService.phoneExists(phone)) {
+            System.out.println("This phone number is already registered to another member.");
+            return;
+        }
+
+        String id = memberService.generateMemberId(phone);
+
+        String name = Input.readNonEmptyString("Name: ");
         String email = Input.readNonEmptyString("Email: ");
         if (!Validations.isValidEmail(email)) {
             System.out.println("Invalid email.");
@@ -270,7 +336,7 @@ public class MainMenu {
             member = new RegularMember(id, name, phone, email);
         }
         if (memberService.addMember(member)) {
-            System.out.println("Member added successfully.");
+            System.out.println("Member added successfully. Member ID: " + id);
         } else {
             System.out.println("Failed to add member.");
         }
@@ -288,10 +354,10 @@ public class MainMenu {
         System.out.println("Current info:");
         m.displayInfo();
 
+        // Luu y: KHONG cho sua Phone tai day, vi Phone la nguon sinh ra Member ID
+        // -> neu sua Phone se lam sai lech ID da sinh truoc do.
         String name = Input.readString("New Name (blank to skip): ");
         if (!name.isEmpty()) m.setName(name);
-        String phone = Input.readString("New Phone (blank to skip): ");
-        if (!phone.isEmpty()) m.setPhone(phone);
         String email = Input.readString("New Email (blank to skip): ");
         if (!email.isEmpty()) m.setEmail(email);
 
@@ -353,7 +419,7 @@ public class MainMenu {
         while (!back) {
             System.out.println();
             System.out.println("----------- BORROWING / RETURNING -----------");
-            System.out.println("1. Borrow a book");
+            System.out.println("1. Borrow book(s) - single receipt");
             System.out.println("2. Return a book");
             System.out.println("3. View currently borrowed books");
             System.out.println("4. View borrowing history by member");
@@ -371,12 +437,31 @@ public class MainMenu {
     }
 
     
+    // Luong muon NHIEU sach cung luc, chung 1 Receipt, chi nhap Member ID 1 lan.
+    // Thu thu chi nhap Book ID (dau sach) cho tung cuon - KHONG nhap Serial Number thu cong,
+    // he thong tu dong tim ban sao AVAILABLE dau tien va gan vao (auto-assign).
     private void doBorrow() {
-        System.out.println("----------- BORROW BOOK -----------");
+        System.out.println("----------- BORROW BOOK(S) -----------");
         String memberId = Input.readNonEmptyString("Member ID: ");
-        String bookId = Input.readNonEmptyString("Book ID: ");
+        if (memberService.getMemberById(memberId) == null) {
+            System.out.println("Member not found.");
+            return;
+        }
+
+        int qty = Input.readInt("How many books do you want to borrow: ");
+        if (qty < 1) {
+            System.out.println("Quantity must be >= 1.");
+            return;
+        }
+
+        List<String> bookIds = new ArrayList<>();
+        for (int i = 1; i <= qty; i++) {
+            String bookId = Input.readNonEmptyString("Enter Book ID for book #" + i + ": ");
+            bookIds.add(bookId);
+        }
+
         LocalDate borrowDate = Input.readDate("Borrow Date (dd/MM/yyyy): ");
-        borrowingService.borrowBook(memberId, bookId, borrowDate);
+        borrowingService.borrowBooks(memberId, bookIds, borrowDate);
     }
 
     
@@ -416,7 +501,7 @@ public class MainMenu {
     
     
     //MENU BAO CAO CAC SO LIEU QUAN TRONG
-    public void reportMenu() {
+    private void reportMenu() {
         boolean back = false;
         while (!back) {
             System.out.println();
